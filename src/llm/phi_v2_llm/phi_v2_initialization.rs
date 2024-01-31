@@ -1,33 +1,29 @@
 #![feature(const_trait_impl)]
 
-use std::path::PathBuf;
 use anyhow::{Error as E, Result};
-
+use std::path::PathBuf;
 
 use candle_transformers::models::mixformer::Config;
 use candle_transformers::models::quantized_mixformer::MixFormerSequentialForCausalLM as QMixFormer;
 
-use candle::{Device};
-use hf_hub::{api::sync::Api, Repo, RepoType};
-use hf_hub::api::sync::ApiRepo;
-use tokenizers::Tokenizer;
 use crate::args_init::args::Args;
 use crate::llm::device::device;
-use crate::llm::llm::{LLM, LlmPackage};
 
+use crate::llm::llm::{LlmPackage, LLM, get_filenames_model};
+use candle::Device;
+use hf_hub::{Repo, RepoType};
+use hf_hub::api::sync::{Api, ApiRepo};
+use tokenizers::Tokenizer;
 
 #[derive(Debug, Clone)]
 pub enum Model {
     Quantized(QMixFormer),
 }
 
-
-
 pub struct LlmModel;
 
 impl LLM for LlmModel {
     fn initialize(&self, args_init: Args) -> Result<LlmPackage> {
-
         /**********************************************************************/
         // Tracing Initialization
         /**********************************************************************/
@@ -41,9 +37,7 @@ impl LLM for LlmModel {
         );
         println!(
             "temp: {:.2} repeat-penalty: {:.2} repeat-last-n: {}",
-            args_init.temperature,
-            args_init.repeat_penalty,
-            args_init.repeat_last_n
+            args_init.temperature, args_init.repeat_penalty, args_init.repeat_last_n
         );
 
         /**********************************************************************/
@@ -63,7 +57,8 @@ impl LLM for LlmModel {
             args_init.revision.clone(),
         ));
 
-        let model_filenames = get_filenames_model(&repo_model, args_init.weight_files, args_init.model_file)?;
+        let model_filenames =
+            get_filenames_model(&repo_model, args_init.weight_files, args_init.model_file)?;
 
         let repo_tokenizer = api.repo(Repo::with_revision(
             args_init.tokenizer_id,
@@ -92,7 +87,6 @@ impl LLM for LlmModel {
 
         let config = Config::v2();
 
-
         // We will only process quantized models
         let (model, device) = {
             let filename = &model_filenames[0];
@@ -101,12 +95,9 @@ impl LLM for LlmModel {
             (Model::Quantized(model), Device::Cpu)
         };
 
-
         /**********************************************************************/
         // End Construction LLM Package
         /**********************************************************************/
-
-
 
         println!("loaded the model in {:?}", start.elapsed());
 
@@ -122,18 +113,4 @@ impl LLM for LlmModel {
             sample_len: args_init.sample_len,
         })
     }
-
-
-}
-
-fn get_filenames_model(repo:&ApiRepo, weight_files:Option<String>, model_file:Option<String>) -> Result<Vec<PathBuf>> {
-    Ok(match weight_files {
-        Some(files) => files
-            .split(',')
-            .map(std::path::PathBuf::from)
-            .collect::<Vec<_>>(),
-        None => {
-                vec![repo.get(model_file.unwrap().as_str())?]
-            }
-    })
 }

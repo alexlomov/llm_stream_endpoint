@@ -1,10 +1,13 @@
-use anyhow::{Error as E, Result};
+use std::path::PathBuf;
+
+use crate::args_init::args::Args;
+use crate::llm::token_output_stream::TokenOutputStream;
+use anyhow::Result;
 use candle::Device;
 use candle_transformers::generation::LogitsProcessor;
+use hf_hub::api::sync::ApiRepo;
 use tokenizers::Tokenizer;
 use tokio::sync::mpsc::UnboundedSender;
-use crate::llm::token_output_stream::TokenOutputStream;
-use crate::args_init::args::Args;
 
 // todo: to be put under feature to spot right LLM
 #[cfg(feature = "mistral")]
@@ -16,17 +19,16 @@ use crate::llm::phi_v2_llm::phi_v2_initialization::Model;
 
 #[derive( Debug,Clone)]
 pub struct LlmPackage {
-    pub model:Model,
-    pub device:Device,
-    pub tokenizer:Tokenizer,
-    pub seed:u64,
-    pub temperature:f64,
-    pub top_p:f64,
-    pub repeat_penalty:f32,
-    pub repeat_last_n:usize,
-    pub sample_len:usize,
+    pub model: Model,
+    pub device: Device,
+    pub tokenizer: Tokenizer,
+    pub seed: u64,
+    pub temperature: f64,
+    pub top_p: f64,
+    pub repeat_penalty: f32,
+    pub repeat_last_n: usize,
+    pub sample_len: usize,
 }
-
 
 pub struct TextGeneration {
     pub model: Model,
@@ -37,12 +39,17 @@ pub struct TextGeneration {
     pub repeat_last_n: usize,
 }
 
+
 pub trait LLM {
-    fn initialize(&self,args_init: Args) ->  Result<LlmPackage> ;
+    fn initialize(&self, args_init: Args) -> Result<LlmPackage>;
 }
 
-
-pub fn generate( llm_package:LlmPackage,prompt:&str,tx:UnboundedSender<String>,context:&str) -> Result<()> {
+pub fn generate(
+    llm_package: LlmPackage,
+    prompt: &str,
+    tx: UnboundedSender<String>,
+    context: &str,
+) -> Result<()> {
     let mut pipeline = TextGeneration::new(
         llm_package.model,
         llm_package.tokenizer,
@@ -53,6 +60,22 @@ pub fn generate( llm_package:LlmPackage,prompt:&str,tx:UnboundedSender<String>,c
         llm_package.repeat_last_n,
         &llm_package.device,
     );
-    pipeline.run(prompt, llm_package.sample_len,tx,context)?;
+    pipeline.run(prompt, llm_package.sample_len, tx, context)?;
     Ok(())
+}
+
+pub fn get_filenames_model(
+    repo: &ApiRepo,
+    weight_files: Option<String>,
+    model_file: Option<String>,
+) -> Result<Vec<PathBuf>> {
+    Ok(match weight_files {
+        Some(files) => files
+            .split(',')
+            .map(std::path::PathBuf::from)
+            .collect::<Vec<_>>(),
+        None => {
+            vec![repo.get(model_file.unwrap().as_str())?]
+        }
+    })
 }
