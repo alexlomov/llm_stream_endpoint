@@ -2,16 +2,12 @@ use anyhow::{Error as E, Result};
 use candle::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 
-use tokenizers::Tokenizer;
-use crate::llm::token_output_stream::TokenOutputStream;
-use tokio::sync::mpsc::{UnboundedSender};
 use crate::llm::llm::TextGeneration;
+use crate::llm::token_output_stream::TokenOutputStream;
+use tokenizers::Tokenizer;
+use tokio::sync::mpsc::UnboundedSender;
 
-
-use crate::llm::mistral_llm::mistral_initialization::{ Model};
-
-
-
+use crate::llm::mistral_llm::mistral_initialization::Model;
 
 impl TextGeneration {
     #[allow(clippy::too_many_arguments)]
@@ -25,7 +21,6 @@ impl TextGeneration {
         repeat_last_n: usize,
         device: &Device,
     ) -> Self {
-
         let logits_processor = LogitsProcessor::new(seed, temp, top_p);
 
         Self {
@@ -38,12 +33,19 @@ impl TextGeneration {
         }
     }
 
-    pub(crate) fn run(&mut self, prompt: &str, sample_len: usize, tx:UnboundedSender<String>,context:&str) -> Result<()> {
+    pub(crate) fn run(
+        &mut self,
+        prompt: &str,
+        sample_len: usize,
+        tx: UnboundedSender<String>,
+        context: &str,
+    ) -> Result<()> {
         use std::io::Write;
         self.tokenizer.clear();
 
+        //TODO: Extract a trait
         // Text Generation Prompt for Mistral
-        let prompt=format!("<s>[INST]{}[/INST]",prompt.trim());
+        let prompt = format!("<s>[INST]{}[/INST]", prompt.trim());
 
         let mut tokens = self
             .tokenizer
@@ -52,7 +54,6 @@ impl TextGeneration {
             .map_err(E::msg)?
             .get_ids()
             .to_vec();
-
 
         let mut generated_tokens = 0usize;
 
@@ -64,7 +65,6 @@ impl TextGeneration {
         let start_gen = std::time::Instant::now();
 
         for index in 0..sample_len {
-
             let context_size = if index > 0 { 1 } else { tokens.len() };
 
             let start_pos = tokens.len().saturating_sub(context_size);
@@ -97,7 +97,6 @@ impl TextGeneration {
             }
         }
 
-
         let dt = start_gen.elapsed();
 
         if let Some(rest) = self.tokenizer.decode_rest().map_err(E::msg)? {
@@ -111,12 +110,4 @@ impl TextGeneration {
 
         Ok(())
     }
-
-
 }
-
-
-
-
-
-

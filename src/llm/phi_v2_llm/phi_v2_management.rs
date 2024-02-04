@@ -2,15 +2,12 @@ use anyhow::{Error as E, Result};
 use candle::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 
-use tokenizers::Tokenizer;
-use crate::llm::token_output_stream::TokenOutputStream;
-use tokio::sync::mpsc::{UnboundedSender};
 use crate::llm::llm::TextGeneration;
+use crate::llm::token_output_stream::TokenOutputStream;
+use tokenizers::Tokenizer;
+use tokio::sync::mpsc::UnboundedSender;
 
-
-use crate::llm::phi_v2_llm::phi_v2_initialization::{ Model};
-
-
+use crate::llm::phi_v2_llm::phi_v2_initialization::Model;
 
 impl TextGeneration {
     #[allow(clippy::too_many_arguments)]
@@ -24,7 +21,6 @@ impl TextGeneration {
         repeat_last_n: usize,
         device: &Device,
     ) -> Self {
-
         let logits_processor = LogitsProcessor::new(seed, temp, top_p);
 
         Self {
@@ -37,13 +33,22 @@ impl TextGeneration {
         }
     }
 
-    pub(crate) fn run(&mut self, prompt: &str, sample_len: usize, tx:UnboundedSender<String>,context:&str) -> Result<()> {
-
+    pub(crate) fn run(
+        &mut self,
+        prompt: &str,
+        sample_len: usize,
+        tx: UnboundedSender<String>,
+        context: &str,
+    ) -> Result<()> {
         self.tokenizer.clear();
 
+        //TODO: Extract a trait
         // Text Generation Prompt for phi-2
-        let prompt=format!("Context:{}.\nInstruct: {}.\nOutput:",context.trim(),prompt.trim());
-
+        let prompt = format!(
+            "Context:{}.\nInstruct: {}.\nOutput:",
+            context.trim(),
+            prompt.trim()
+        );
 
         let mut tokens = self
             .tokenizer
@@ -53,15 +58,12 @@ impl TextGeneration {
             .get_ids()
             .to_vec();
 
-
         let mut generated_tokens = 0usize;
-
 
         let eos_token = match self.tokenizer.get_token("<|endoftext|>") {
             Some(token) => token,
             None => anyhow::bail!("cannot find the </s> token"),
         };
-
 
         let start_gen = std::time::Instant::now();
 
@@ -72,7 +74,6 @@ impl TextGeneration {
             let ctxt = &tokens[start_pos..];
 
             let input = Tensor::new(ctxt, &self.device)?.unsqueeze(0)?;
-
 
             let logits = match &mut self.model {
                 Model::Quantized(m) => m.forward(&input)?,
@@ -89,7 +90,6 @@ impl TextGeneration {
                 )?
             };
 
-
             let next_token = self.logits_processor.sample(&logits)?;
             tokens.push(next_token);
             generated_tokens += 1;
@@ -102,22 +102,19 @@ impl TextGeneration {
             if let Some(t) = self.tokenizer.next_token(next_token)? {
                 let _ = tx.send(t.to_string());
             }
-
         }
 
-            let dt = start_gen.elapsed();
+        let dt = start_gen.elapsed();
 
-            if let Some(rest) = self.tokenizer.decode_rest().map_err(E::msg)? {
-                let _ = tx.send(rest.to_string());
-            }
+        if let Some(rest) = self.tokenizer.decode_rest().map_err(E::msg)? {
+            let _ = tx.send(rest.to_string());
+        }
 
-            println!(
-                "\n{generated_tokens} tokens generated ({:.2} token/s)",
-                generated_tokens as f64 / dt.as_secs_f64(),
-            );
+        println!(
+            "\n{generated_tokens} tokens generated ({:.2} token/s)",
+            generated_tokens as f64 / dt.as_secs_f64(),
+        );
 
-            Ok(())
-
+        Ok(())
     }
-
 }

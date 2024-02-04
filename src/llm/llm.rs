@@ -40,6 +40,7 @@ pub struct TextGeneration {
 }
 
 
+// TODO: Kill me
 pub trait LLM {
     fn initialize(&self, args_init: Args) -> Result<LlmPackage>;
 }

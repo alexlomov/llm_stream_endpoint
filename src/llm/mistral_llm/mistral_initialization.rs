@@ -7,18 +7,9 @@ use candle_transformers::models::mistral::Config;
 use candle_transformers::models::quantized_mistral::Model as QMistral;
 
 use crate::args_init::args::Args;
-<<<<<<< HEAD
 use crate::llm::device::device;
 use crate::llm::llm::{LLM, LlmPackage};
 
-=======
-use crate::llm::llm::{LlmPackage, LLM, get_filenames_model
-};
-use candle::Device;
-use hf_hub::api::sync::{Api, ApiRepo};
-use hf_hub::{Repo, RepoType};
-use tokenizers::Tokenizer;
->>>>>>> 24bb835 (WIP: Extracting reusable parts. Move get_filename_model to the mod level.)
 
 #[derive(Debug, Clone)]
 pub enum Model {

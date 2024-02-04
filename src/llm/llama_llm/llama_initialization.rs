@@ -1,28 +1,22 @@
 #![feature(const_trait_impl)]
 
-use std::path::PathBuf;
 use anyhow::{Error as E, Result};
+use std::path::PathBuf;
 
-
-use candle::{Device};
-use candle::quantized::gguf_file;
-use candle_transformers::models::quantized_llama::ModelWeights;
-use hf_hub::{api::sync::Api, Repo, RepoType};
-use hf_hub::api::sync::ApiRepo;
-use tokenizers::Tokenizer;
 use crate::args_init::args::Args;
 use crate::llm::device::device;
 use crate::llm::quantized_llm::{QuantizedLLM, QuantizedLlmPackage};
-
-
-
-
+use candle::quantized::gguf_file;
+use candle::Device;
+use candle_transformers::models::quantized_llama::ModelWeights;
+use hf_hub::api::sync::{Api, ApiRepo};
+use hf_hub::{Repo, RepoType};
+use tokenizers::Tokenizer;
 
 pub struct QuantizedLlmModel;
 
 impl QuantizedLLM for QuantizedLlmModel {
     fn initialize(&self, args_init: Args) -> Result<QuantizedLlmPackage> {
-
         /**********************************************************************/
         // Tracing Initialization
         /**********************************************************************/
@@ -36,9 +30,7 @@ impl QuantizedLLM for QuantizedLlmModel {
         );
         println!(
             "temp: {:.2} repeat-penalty: {:.2} repeat-last-n: {}",
-            args_init.temperature,
-            args_init.repeat_penalty,
-            args_init.repeat_last_n
+            args_init.temperature, args_init.repeat_penalty, args_init.repeat_last_n
         );
 
         /**********************************************************************/
@@ -58,7 +50,11 @@ impl QuantizedLLM for QuantizedLlmModel {
             args_init.revision.clone(),
         ));
 
-        let model_filenames = get_filenames_model(&repo_model, args_init.local_model_file, args_init.model_file)?;
+        let model_filenames = get_filenames_model(
+            &repo_model,
+            args_init.local_model_file,
+            args_init.model_file,
+        )?;
 
         let repo_tokenizer = api.repo(Repo::with_revision(
             args_init.tokenizer_id,
@@ -82,13 +78,12 @@ impl QuantizedLLM for QuantizedLlmModel {
 
         let start = std::time::Instant::now();
 
-
         let model_path = model_filenames[0].clone();
-
 
         let mut file = std::fs::File::open(&model_path)?;
 
-        let gguf_model_content = gguf_file::Content::read(&mut file).map_err(|e| e.with_path(model_path))?;
+        let gguf_model_content =
+            gguf_file::Content::read(&mut file).map_err(|e| e.with_path(model_path))?;
         let mut total_size_in_bytes = 0;
         for (_, tensor) in gguf_model_content.tensor_infos.iter() {
             let elem_count = tensor.shape.elem_count();
@@ -106,8 +101,10 @@ impl QuantizedLLM for QuantizedLlmModel {
         // CPU
         let device = device(true)?;
 
-        let (model_weights, device) = (ModelWeights::from_gguf(gguf_model_content, &mut file, &device)?, Device::Cpu);
-
+        let (model_weights, device) = (
+            ModelWeights::from_gguf(gguf_model_content, &mut file, &device)?,
+            Device::Cpu,
+        );
 
         /**********************************************************************/
         // End Construction LLM Package
@@ -116,7 +113,7 @@ impl QuantizedLLM for QuantizedLlmModel {
         println!("loaded the model in {:?}", start.elapsed());
 
         Ok(QuantizedLlmPackage {
-            model_type:args_init.model_type,
+            model_type: args_init.model_type,
             model_weights,
             device,
             tokenizer,
@@ -130,11 +127,13 @@ impl QuantizedLLM for QuantizedLlmModel {
     }
 }
 
-fn get_filenames_model(repo:&ApiRepo, weight_files:Option<String>,model_file:Option<String>) -> Result<Vec<PathBuf>> {
-    Ok( vec![repo.get(model_file.unwrap().as_str())?])
+fn get_filenames_model(
+    repo: &ApiRepo,
+    weight_files: Option<String>,
+    model_file: Option<String>,
+) -> Result<Vec<PathBuf>> {
+    Ok(vec![repo.get(model_file.unwrap().as_str())?])
 }
-
-
 
 fn format_size(size_in_bytes: usize) -> String {
     if size_in_bytes < 1_000 {

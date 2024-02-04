@@ -9,10 +9,10 @@ use candle_transformers::models::quantized_mixformer::MixFormerSequentialForCaus
 use crate::args_init::args::Args;
 use crate::llm::device::device;
 
-use crate::llm::llm::{LlmPackage, LLM, get_filenames_model};
+use crate::llm::llm::{get_filenames_model, LlmPackage, LLM};
 use candle::Device;
-use hf_hub::{Repo, RepoType};
 use hf_hub::api::sync::{Api, ApiRepo};
+use hf_hub::{Repo, RepoType};
 use tokenizers::Tokenizer;
 
 #[derive(Debug, Clone)]
@@ -90,7 +90,9 @@ impl LLM for LlmModel {
         // We will only process quantized models
         let (model, device) = {
             let filename = &model_filenames[0];
-            let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(filename,&device)?;
+            let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(
+                filename, &device,
+            )?;
             let model = QMixFormer::new_v2(&config, vb)?;
             (Model::Quantized(model), Device::Cpu)
         };
