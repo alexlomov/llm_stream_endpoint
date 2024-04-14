@@ -44,7 +44,7 @@ use llm_stream::llm::mistral_llm::mistral_initialization::{LlmModel};
 use llm_stream::llm::phi_v2_llm::phi_v2_initialization::{LlmModel};
 
 
-
+// TODO: Move to the config?
 const NB_WORKERS:usize = 4;
 
 #[derive(Serialize, Deserialize, Debug,Clone)]
