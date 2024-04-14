@@ -1,0 +1,19 @@
+number_of_workers = "${NO_OF_WORKERS:-4}"
+llm_type = "${LLM_TYPE}"
+
+
+[llms.mistral]
+acceleration = "${LLM_HW_ACCELERATION:-try_cuda}" # cuda, cpu, try_cuda, metal, try_metal. All try_ configs fall back to CPU, all other configs fail fast if the acceleration is unavailable.
+temperature = 0.1
+use_flash_attention = true
+top_p = 0.3
+seed = 299792458
+sample_length = 2000
+model_id = "lmz/candle-mistral"
+revision = "main"
+model_file = "model-q4k.gguf"
+tokenizer_id = "lmz/candle-mistral"
+tokenizer_file = "tokenizer.json"
+weight_files = "${LLM_WEIGHT_FILES:-}"
+repeat_penalty = 1.1
+repeat_last_n = 64
