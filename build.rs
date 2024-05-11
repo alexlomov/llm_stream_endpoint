@@ -1,6 +1,3 @@
-#![allow(unused)]
-use anyhow::{Context, Result};
-
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -16,7 +13,7 @@ const KERNEL_DIRS: [KernelDirectories; 1] = [KernelDirectories {
     include_dirs: &[],
 }];
 
-fn main() -> Result<()> {
+fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     #[cfg(feature = "cuda")]
@@ -28,5 +25,4 @@ fn main() -> Result<()> {
             bindings.write(kdir.rust_target).unwrap()
         }
     }
-    Ok(())
 }

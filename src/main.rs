@@ -136,7 +136,7 @@ async fn main() ->anyhow::Result<()> {
     let routes_generation = warp::path("token_stream")
         .and(warp::post())
         .and(prompt_json_body())
-        .map( move |prompt :Prompt| {
+        .map( |prompt : &Prompt| {
 
 
             // Create a new channel for each request
